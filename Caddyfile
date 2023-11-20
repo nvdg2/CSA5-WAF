@@ -1,0 +1,17 @@
+{
+        order coraza_waf first
+}
+
+juiceshop:80 {
+        coraza_waf {
+                load_owasp_crs
+                directives `
+                   Include /ruleset/coraza.conf 
+                   Include /ruleset/crs-setup.conf
+                   Include /ruleset/rules/*.conf
+                   SecRuleEngine On
+                `
+        }
+
+        reverse_proxy juiceshop_cont:3000
+}
