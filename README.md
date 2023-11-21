@@ -45,7 +45,7 @@ SecRule REQUEST_COOKIES|!REQUEST_COOKIES:/__utm/|!REQUEST_COOKIES:/_pk_ref/|REQU
 
 De volgende regel bevat een complexe reguliere expressie. 
 
-```
+```text
 SecRule MATCHED_VARS "!@rx ^ey[\-0-9A-Z_a-z]+\.ey[\-0-9A-Z_a-z]+\.[\-0-9A-Z_a-z]+$"
 ```
 
@@ -64,11 +64,7 @@ Er wordt een kritieke anomalie score aan het verzoek van de gebruiker gegeven in
 
 Zoals u ziet, zijn de eerste drie voorbeelden heel gelijkaardig aan de injectie die wij hebben uitgevoerd.
 
-
-
 ## Cross site scripting
-
-
 
 ## CSRF aanval
 

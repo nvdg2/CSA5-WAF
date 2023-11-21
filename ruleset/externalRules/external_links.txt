@@ -1,0 +1,1 @@
+https://socket.dev/go/package/github.com/vermaShivansh/coraza-ratelimit-plugin?section=overview
