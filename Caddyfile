@@ -1,17 +1,24 @@
 {
-        order coraza_waf first
+    order coraza_waf first
 }
-
-juiceshop:80 {
-        coraza_waf {
-                load_owasp_crs
-                directives `
-                   Include /ruleset/coraza.conf 
-                   Include /ruleset/crs-setup.conf
-                   Include /ruleset/rules/*.conf
-                   SecRuleEngine On
-                `
+:80 {
+    handle /socket.io/ {
+        reverse_proxy juiceshop_cont:3000 {
+            header_up Host {upstream_hostport}
         }
+    }
 
+    handle * {
+        coraza_waf {
+            load_owasp_crs
+            directives `
+            Include /ruleset/coraza.conf 
+            Include /ruleset/crs-setup.conf
+            Include /ruleset/rules/*.conf
+            SecRuleEngine On
+            `
+        }
         reverse_proxy juiceshop_cont:3000
+    }
+
 }
