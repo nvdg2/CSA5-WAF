@@ -8,8 +8,9 @@ services:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-      - ./ruleset:/ruleset
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./ruleset:/ruleset:ro
+      - ./GeoLite2-Country.mmdb:/usr/share/GeoIP/GeoLite2-Country.mmdb:ro
       - audit:/audit
     ports:
       - 8080:80
