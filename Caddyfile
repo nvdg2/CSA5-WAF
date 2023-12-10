@@ -16,9 +16,13 @@
             Include /ruleset/crs-setup.conf
             Include /ruleset/rules/*.conf
             SecRuleEngine On
+            SecDebugLog /dev/stdout
+		    SecDebugLogLevel 9
             `
         }
-        reverse_proxy juiceshop_cont:3000
+        reverse_proxy juiceshop_cont:3000 {
+            header_up Host {upstream_hostport}
+        }
     }
 
 }
