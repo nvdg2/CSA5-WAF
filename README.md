@@ -1,12 +1,16 @@
 # CS5-WAF
 
+_Link naar repository: [https://github.com/nvdg2/CSA5-WAF](https://github.com/nvdg2/CSA5-WAF)_
+
+_Link naar coraza/caddy fork: [https://github.com/nvdg2/coraza-daddy](https://github.com/nvdg2/coraza-daddy)_
+
 ## Externe bronnen
 
-Tutorial used from: [jptosso](https://medium.com/@jptosso/oss-waf-stack-using-coraza-caddy-and-elastic-3a715dcbf2f2)
+Tutorial gebruikt van: [jptosso](https://medium.com/@jptosso/oss-waf-stack-using-coraza-caddy-and-elastic-3a715dcbf2f2)
+## Threat model
 
-## Brute force aanval
-
-## SQL injection
+THREAT MODEL HIER NOG PLAATSEN
+## SQL injectionµ
 
 ### Input van aanvaller
 
@@ -116,8 +120,94 @@ SecRule REQUEST_COOKIES|!REQUEST_COOKIES:/__utm/|REQUEST_COOKIES_NAMES|ARGS_NAME
     setvar:'tx.inbound_anomaly_score_pl1=+%{tx.critical_anomaly_score}'"
 ```
 
-## CSRF aanval
 
-## Eender welke request die van buiten België komt
+## Troubleshooting geo IP
 
-## Blokkeren van ‘repeat offenders’
+De voorbije twee weken hebben Tom en ik ons uiterste best gedaan om Geo IP werkende te krijgen. Dit bleek echter veel moeilijker te zijn dan eerder verwacht, aangezien geo ip na versie 3 niet meer via een regel te gebruiken is.
+
+In plaats daarvan kan je via een Coraza plugin geo IP functionaliteiten toevoegen een de WAF. Dit is "eenvoudig" te doen wanneer Coraza native draait, maar dit wordt complexer wanneer Coraza vooraf wordt gebouwd (wat bij ons het geval is).
+
+Na een twee uur lange debug sessie met mijnheer Boeynaems hebben we besloten om onze eigen fork van de coraza/caddy repository te maken en de plugin hieraan toe te voegen.
+
+Opnieuw was dit een grotere uitdaging dan verwacht en is dit jammer genoeg niet gelukt. Desondanks willen we laten zien welke stappen we hebben doornomen en tegen welke problemen we zijn aangekomen.
+
+### Forken van de repo
+
+Als eerst hebben we dus de repo geforked en probeerden we de geo plugin te installeren via de [officiële syntax](https://github.com/corazawaf/coraza-geoip). Het eerste probleem was dat de documentatie geen specifiek doelbestand aangaf en dat het een trail en error proces was vooraleer we progressie maakten.
+
+![](images/troubleshoot5.png)
+
+![Alt text](images/troubleshoot1.png)
+
+### Bouwproces
+
+Tijden het bouwproces zaten we opnieuw vast. Onze wijzigingen in de repo werden niet doorgevoerd. Na enige tijd te zoeken, ondervonden we dat er in onze fork vaak werd verwezen naar de originele repository.
+
+We hebben in alle files elke referentie verandert  door een referentie naar onze eigen fork. Dit bleek het probleem op het eerste zicht op te lossen.
+
+### Regels werkende krijgen
+
+Toen de fork correct was gebouwd, begonnen we met het implementeren van de geo IP regel. Hierop liepen we jammer genoeg definitief vast: we krijgen telkens de foutmelding dat de IP lookup geen resultaten terug gaf.
+
+![Alt text](images/error1.png)
+
+We hebben verschillende varianten van regels uitgeprobeerd, zoals u hieronder kan zien.
+
+Variant 1:
+![Alt text](images/troubleshoot2.png)
+
+Variant 2:
+![Alt text](images/troubleshoot3.png)
+
+Tijdens het maken van deze regels waren we heel beperkt moet onze kennis. De **officiële documentatie** bevatte namelijk **outdated** info. De laatste versie (versie 4) heeft namelijk andere syntax regels dan versie 3. Daarom hadden we zeer vaak problemen met de volgende error:
+
+![Alt text](images/troubleshoot4.png)
+
+We moesten gebruik maken van TX, maar dit brak vaak de logica die sommige regels nodig hadden.
+
+### Einde van geo IP
+
+Tot slot besloot een van ons om dezelfde regels te testen op een build die geen gebruik maakt van onze fork. Wat bleek: dezelfde errors traden op. We konden hieruit besluiten dat de build niet succesvol was en de plugin niet was geïnstalleerd.
+
+Jammer genoeg was onze inspiratie hier ten einde en hebben we besloten om onze kans te wagen bij het beschermen tegen brute forcen.
+
+## Troubleshooting Brute force
+
+We zijn aan dit deel begonnen met goede moed. We vonden enkele implementaties van DOS bescherming in de [officiële documentatie](https://coraza.io/docs/seclang/variables/) en [onofficiële voorbeelden ](https://docs.mirantis.com/mcp/q4-18/mcp-security-best-practices/use-cases/brute-force-prevention/create-brute-force-rules.html)
+
+We hebben twee varianten uitgeprobeerd van de DOS bescherming: een officiële en een niet officiële variant. Beide kan u hieronder terugvinden
+
+Niet officiële:
+![](images/troubleshoot6.png)
+
+Officiële:
+![](images/troubleshoot7.png)
+
+Er trad al snel een herkenbaar probleem op:
+
+![Alt text](images/troubleshoot4.png)
+
+Zelf wanneer we de officiële syntax gebruikte van Coraza, letterlijk knippen en plakken, traden er syntax problemen op. We spreken over de volgende code snippet:
+
+```
+SecAction phase:1,id:109,initcol:ip=%{REMOTE_ADDR},nolog SecRule ARGS:login "!^$" "nolog,phase:1,id:110,setvar:ip.auth_attempt=+1,deprecatevar:ip.auth_attempt=25/120" SecRule IP:AUTH_ATTEMPT "@gt 25" "log,drop,phase:1,id:111,msg:'Possible Brute Force Attack'"
+```
+
+Na opnieuw veel trail en error, is het ons ook deze keer jammer genoeg niet gelukt om  de regel succesvol te implementeren.
+
+## Besluit troubleshooting en geleerde lessen
+
+Coraza is zonder twijfel een zeer krachtige Web Application Firewall en is daarnaast zeer aanpasbaar. Met de juiste kennis kan je regels zelf schrijven en met behulp van plugins zijn de mogelijkheden bijna eindeloos.
+
+Echter, een zware valkuil van deze toepassing is de activiteit van de community en de documentatie. Wanneer google het moeilijk heeft met zoekopdrachten zoals `coraza brute force protection`, weet je dat er een uitdaging te wachten staat.
+
+Tom en ik hebben echter veel geleerd tijdens het zoeken naar een mogelijke oplossing. Deze willen we dan ook graag met u delen:
+
+- Met de juiste kennis kunnen Coraza plugins eenvoudig via Go geïnstalleerd worden, wat de firewall eenvoudig uitbreidbaar maakt.
+- NOG EENTJE TOM
+- NOG EENTJE TOM
+
+
+Om dit project af te ronden, willen we eindigen met een toepasselijke quote:
+
+**_“Losing is essential to anyone’s success. The more you lose, the more you want to win.” - Brett Hull_**
