@@ -10,6 +10,6 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ./ruleset:/ruleset:ro
-      - ./dbGeoIpBlock.mmdb:/etc/caddy/dbGeoIpBlock.mmdb:ro
+      - ./dbGeoIpBlock.mmdb:/srv/dbGeoIpBlock.mmdb
     ports:
       - 8080:80
