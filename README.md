@@ -2,15 +2,19 @@
 
 _Link naar repository: [https://github.com/nvdg2/CSA5-WAF](https://github.com/nvdg2/CSA5-WAF)_
 
-_Link naar coraza/caddy fork: [https://github.com/nvdg2/coraza-daddy](https://github.com/nvdg2/coraza-daddy)_
+_Link naar coraza/caddy fork: [https://github.com/nvdg2/coraza-daddy-revenge](https://github.com/nvdg2/coraza-daddy-revenge)_
 
 ## Externe bronnen
 
 Tutorial gebruikt van: [jptosso](https://medium.com/@jptosso/oss-waf-stack-using-coraza-caddy-and-elastic-3a715dcbf2f2)
+
+Dankzij klasgenoot Jasper van Meel hebben we onze GeoIP module werkende gekregen om deze daarna in onze docker omgeving toe tevoegen.
+
 ## Threat model
 
 THREAT MODEL HIER NOG PLAATSEN
-## SQL injectionµ
+
+## SQL injection
 
 ### Input van aanvaller
 
@@ -30,7 +34,7 @@ SQL injectie wordt dus succesvol tegengehouden.
 
 ### Core regel met betrekking tot SQL injectie
 
-```conf
+```text
 SecRule REQUEST_COOKIES|!REQUEST_COOKIES:/__utm/|!REQUEST_COOKIES:/_pk_ref/|REQUEST_COOKIES_NAMES|ARGS_NAMES|ARGS|XML:/* "@rx /\*!?|\*/|[';]--|--(?:[\s\v]|[^\-]*?-)|[^&\-]#.*?[\s\v]|;?\x00" \
     "id:942440,\
     phase:2,\
@@ -98,7 +102,7 @@ In onze applicatie zien we dat Coraza succesvol een XSS aanval heeft gedetecteer
 
 De XSS aanval triggerde de volgende regel in het REQUEST-941-APPLICATION-ATTACK-XSS.conf bestand:
 
-```conf
+```text
 SecRule REQUEST_COOKIES|!REQUEST_COOKIES:/__utm/|REQUEST_COOKIES_NAMES|ARGS_NAMES|ARGS|REQUEST_FILENAME|XML:/* "@rx (?i)\b(?:eval|set(?:timeout|interval)|new[\s\v]+Function|a(?:lert|tob)|btoa)[\s\v]*\(" \
     "id:941390,\
     phase:2,\
@@ -120,8 +124,11 @@ SecRule REQUEST_COOKIES|!REQUEST_COOKIES:/__utm/|REQUEST_COOKIES_NAMES|ARGS_NAME
     setvar:'tx.inbound_anomaly_score_pl1=+%{tx.critical_anomaly_score}'"
 ```
 
+## GeoIp block
 
-## Troubleshooting geo IP
+Voor het juist functioneren van onze repo is een Maxmind Country ip nodig, deze mag door licientie compatibiliteit niet in de repo zelf zitten.
+
+### Troubleshooting
 
 De voorbije twee weken hebben Tom en ik ons uiterste best gedaan om Geo IP werkende te krijgen. Dit bleek echter veel moeilijker te zijn dan eerder verwacht, aangezien geo ip na versie 3 niet meer via een regel te gebruiken is.
 
@@ -135,9 +142,9 @@ Opnieuw was dit een grotere uitdaging dan verwacht en is dit jammer genoeg niet 
 
 Als eerst hebben we dus de repo geforked en probeerden we de geo plugin te installeren via de [officiële syntax](https://github.com/corazawaf/coraza-geoip). Het eerste probleem was dat de documentatie geen specifiek doelbestand aangaf en dat het een trail en error proces was vooraleer we progressie maakten.
 
-![](images/troubleshoot5.png)
+![Geoip troubleshooting](images/troubleshoot5.png)
 
-![Alt text](images/troubleshoot1.png)
+![Geoip troubleshooting](images/troubleshoot1.png)
 
 ### Bouwproces
 
@@ -149,19 +156,19 @@ We hebben in alle files elke referentie verandert  door een referentie naar onze
 
 Toen de fork correct was gebouwd, begonnen we met het implementeren van de geo IP regel. Hierop liepen we jammer genoeg definitief vast: we krijgen telkens de foutmelding dat de IP lookup geen resultaten terug gaf.
 
-![Alt text](images/error1.png)
+![Geoip troubleshooting](images/error1.png)
 
 We hebben verschillende varianten van regels uitgeprobeerd, zoals u hieronder kan zien.
 
 Variant 1:
-![Alt text](images/troubleshoot2.png)
+![Geoip troubleshooting](images/troubleshoot2.png)
 
 Variant 2:
-![Alt text](images/troubleshoot3.png)
+![Geoip troubleshooting](images/troubleshoot3.png)
 
 Tijdens het maken van deze regels waren we heel beperkt moet onze kennis. De **officiële documentatie** bevatte namelijk **outdated** info. De laatste versie (versie 4) heeft namelijk andere syntax regels dan versie 3. Daarom hadden we zeer vaak problemen met de volgende error:
 
-![Alt text](images/troubleshoot4.png)
+![Geoip troubleshooting](images/troubleshoot4.png)
 
 We moesten gebruik maken van TX, maar dit brak vaak de logica die sommige regels nodig hadden.
 
@@ -173,23 +180,23 @@ Jammer genoeg was onze inspiratie hier ten einde en hebben we besloten om onze k
 
 ## Troubleshooting Brute force
 
-We zijn aan dit deel begonnen met goede moed. We vonden enkele implementaties van DOS bescherming in de [officiële documentatie](https://coraza.io/docs/seclang/variables/) en [onofficiële voorbeelden ](https://docs.mirantis.com/mcp/q4-18/mcp-security-best-practices/use-cases/brute-force-prevention/create-brute-force-rules.html)
+We zijn aan dit deel begonnen met goede moed. We vonden enkele implementaties van DOS bescherming in de [officiële documentatie](https://coraza.io/docs/seclang/variables/) en [onofficiële voorbeelden](https://docs.mirantis.com/mcp/q4-18/mcp-security-best-practices/use-cases/brute-force-prevention/create-brute-force-rules.html)
 
 We hebben twee varianten uitgeprobeerd van de DOS bescherming: een officiële en een niet officiële variant. Beide kan u hieronder terugvinden
 
 Niet officiële:
-![](images/troubleshoot6.png)
+![Geoip troubleshooting](images/troubleshoot6.png)
 
 Officiële:
-![](images/troubleshoot7.png)
+![Geoip troubleshooting](images/troubleshoot7.png)
 
 Er trad al snel een herkenbaar probleem op:
 
-![Alt text](images/troubleshoot4.png)
+![Geoip troubleshooting](images/troubleshoot4.png)
 
 Zelf wanneer we de officiële syntax gebruikte van Coraza, letterlijk knippen en plakken, traden er syntax problemen op. We spreken over de volgende code snippet:
 
-```
+```text
 SecAction phase:1,id:109,initcol:ip=%{REMOTE_ADDR},nolog SecRule ARGS:login "!^$" "nolog,phase:1,id:110,setvar:ip.auth_attempt=+1,deprecatevar:ip.auth_attempt=25/120" SecRule IP:AUTH_ATTEMPT "@gt 25" "log,drop,phase:1,id:111,msg:'Possible Brute Force Attack'"
 ```
 
@@ -206,7 +213,6 @@ Tom en ik hebben echter veel geleerd tijdens het zoeken naar een mogelijke oplos
 - Met de juiste kennis kunnen Coraza plugins eenvoudig via Go geïnstalleerd worden, wat de firewall eenvoudig uitbreidbaar maakt.
 - NOG EENTJE TOM
 - NOG EENTJE TOM
-
 
 Om dit project af te ronden, willen we eindigen met een toepasselijke quote:
 
